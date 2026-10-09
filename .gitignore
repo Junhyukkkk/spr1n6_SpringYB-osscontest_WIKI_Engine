@@ -1,2 +1,18 @@
 .DS_Store
 docs/superpowers/
+.local/
+
+# 비밀값과 로컬 설정
+.env*
+!.env.example
+config/team.json
+secrets.env
+
+# 파이썬 산출물
+.venv/
+__pycache__/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/

@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "team-wiki-engine"
+version = "0.1.0"
+description = "팀 위키 엔진: 설정 · Claude 실행 계층 · 위키 점검"
+requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
+readme = "README.md"
+dependencies = [
+    "claude-agent-sdk==0.2.164",
+    "discord.py==2.7.1",
+    "httpx2>=2.13,<3",
+    "pydantic>=2.12",
+    "PyYAML>=6",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9",
+    "pytest-asyncio>=1",
+    "mypy>=2",
+    "ruff>=0.16",
+    "types-PyYAML>=6",
+]
+
+[project.scripts]
+team-wiki-lint = "team_wiki_engine.wiki.lint_cli:main"
+team-wiki-notify = "team_wiki_engine.ops.notify_cli:main"
+team-wiki-backup = "team_wiki_engine.ops.backup:main"
+team-wiki-preflight = "team_wiki_engine.ops.preflight:main"
+team-wiki-sync = "team_wiki_engine.sync.main:main"
+team-wiki-pull = "team_wiki_engine.sync.pull:main"
+team-wiki-bot = "team_wiki_engine.bot.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "--strict-markers"
+faulthandler_timeout = 300
+pythonpath = ["."]
+markers = [
+    "live: 실제 Claude API를 부르는 테스트(LIVE_CLAUDE=1일 때만)",
+]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+mypy_path = "src"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
