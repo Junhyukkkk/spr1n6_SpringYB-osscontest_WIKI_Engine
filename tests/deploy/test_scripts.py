@@ -20,7 +20,8 @@ from tests.helpers.deploy_scripts import (
 ROOT = Path(__file__).resolve().parents[2]
 DEPLOY = ROOT / "deploy"
 SETUP, UPDATE, LIB = DEPLOY / "setup.sh", DEPLOY / "update.sh", DEPLOY / "lib.sh"
-SCRIPTS = (LIB, SETUP, UPDATE)
+STANDALONE = DEPLOY / "run-standalone.sh"
+SCRIPTS = (LIB, SETUP, UPDATE, STANDALONE)
 BASHES = bash_candidates()
 FORBIDDEN = (
     "declare -A", "mapfile", "readarray", ",,}", "^^}", "|&", "&>>", "coproc",
@@ -60,7 +61,7 @@ def test_shellcheck_when_available() -> None:
     if shutil.which("shellcheck") is None:
         pytest.skip("shellcheck 없음")
     done = subprocess.run(
-        ["shellcheck", "-x", *map(str, SCRIPTS)], capture_output=True, text=True, cwd=DEPLOY
+        ["shellcheck", "-x", *map(str, SCRIPTS)], capture_output=True, text=True, cwd=ROOT
     )
     assert done.returncode == 0, done.stdout
 
