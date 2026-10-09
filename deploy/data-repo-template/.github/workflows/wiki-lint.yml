@@ -1,0 +1,46 @@
+# 데이터 저장소 PR 점검. 비밀값을 쓰지 않고 읽기 권한만 쓴다.
+# 저장소 변수 TEAM_WIKI_ENGINE_REPO(엔진 저장소 https 주소)와 TEAM_WIKI_ENGINE_REF(태그 또는 커밋)가 필요하다.
+name: wiki-lint
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: wiki-lint-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 동기화 PR은 wiki/·baseline.json·metrics/만 바꾼다
+        if: startsWith(github.head_ref, 'sync/')
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: bash .github/scripts/check-sync-paths.sh "$BASE_SHA" "$HEAD_SHA"
+      - name: 엔진 설치(저장소 변수의 고정 ref)
+        env:
+          ENGINE_REPO: ${{ vars.TEAM_WIKI_ENGINE_REPO }}
+          ENGINE_REF: ${{ vars.TEAM_WIKI_ENGINE_REF }}
+        run: |
+          if [ -z "$ENGINE_REPO" ] || [ -z "$ENGINE_REF" ]; then
+            echo "저장소 변수 TEAM_WIKI_ENGINE_REPO·TEAM_WIKI_ENGINE_REF를 설정하세요" >&2
+            exit 1
+          fi
+          python -m pip install --disable-pip-version-check "team-wiki-engine @ git+${ENGINE_REPO}@${ENGINE_REF}"
+      - name: 위키 점검
+        run: |
+          if [ -d wiki ]; then
+            team-wiki-lint .
+          else
+            echo "wiki/가 아직 없습니다 — 첫 동기화 전이라 점검을 건너뜁니다"
+          fi

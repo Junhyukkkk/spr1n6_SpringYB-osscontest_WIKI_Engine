@@ -1,0 +1,45 @@
+# 실패한 유닛 이름(%i)을 운영 채널에 알린다. 아무것도 쓰지 않는다(ReadWritePaths 없음).
+# OnFailure가 없다 — 알림이 실패해도 다시 알림을 부르지 않는다. [Install]도 없다.
+[Unit]
+Description=team-wiki 실패 알림 (%i)
+
+[Service]
+Type=oneshot
+User=teamwiki
+Group=teamwiki
+WorkingDirectory=/srv/team-wiki
+Environment=HOME=/srv/team-wiki/home
+Environment=TEAM_WIKI_HOME=/srv/team-wiki
+Environment=TEAM_WIKI_CONFIG=/etc/team-wiki/team.json
+Environment=LANG=C.UTF-8
+Environment=PYTHONUTF8=1
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+EnvironmentFile=/etc/team-wiki/secrets.env
+ExecStart=/opt/team-wiki-engine/.venv/bin/team-wiki-notify %i
+TimeoutStartSec=1min
+TimeoutStopSec=30s
+KillMode=control-group
+KillSignal=SIGTERM
+MemoryMax=256M
+TasksMax=32
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK

@@ -1,0 +1,64 @@
+# team-wiki 디스코드 봇. 항상 실행하고, 죽거나 멈추면(워치독) 다시 띄운다.
+# 봇이 data 사본을 data.lock을 쥔 채 스스로 갱신한다(pull 타이머 없음).
+# 설정 오류·토큰 거부(종료 코드 2)는 다시 띄워도 소용없으므로 멈추고 실패 알림을 보낸다.
+# 이 파일은 사용자가 배포를 승인한 뒤 deploy/setup.sh가 설치한다(deploy/README.md).
+[Unit]
+Description=team-wiki 디스코드 봇
+Wants=network-online.target
+After=network-online.target
+OnFailure=team-wiki-notify@%n.service
+StartLimitIntervalSec=600
+StartLimitBurst=10
+
+[Service]
+Type=notify
+NotifyAccess=main
+WatchdogSec=120
+User=teamwiki
+Group=teamwiki
+WorkingDirectory=/srv/team-wiki
+Environment=HOME=/srv/team-wiki/home
+Environment=TEAM_WIKI_HOME=/srv/team-wiki
+Environment=TEAM_WIKI_CONFIG=/etc/team-wiki/team.json
+Environment=TEAM_WIKI_ENGINE_DIR=/opt/team-wiki-engine
+Environment=LANG=C.UTF-8
+Environment=PYTHONUTF8=1
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+EnvironmentFile=/etc/team-wiki/secrets.env
+ExecStartPre=/opt/team-wiki-engine/.venv/bin/team-wiki-preflight --role bot --quiet
+ExecStart=/opt/team-wiki-engine/.venv/bin/team-wiki-bot
+Restart=always
+RestartSec=30
+RestartPreventExitStatus=2
+TimeoutStartSec=5min
+TimeoutStopSec=180s
+KillMode=control-group
+KillSignal=SIGTERM
+MemoryMax=3G
+TasksMax=256
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/srv/team-wiki
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+
+[Install]
+WantedBy=multi-user.target

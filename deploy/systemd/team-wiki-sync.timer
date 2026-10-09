@@ -1,0 +1,14 @@
+# 동기화 일정의 정본. team.json의 schedule은 표시용이며 이 값과 같아야 한다.
+# 서버가 꺼져 있어 놓친 실행은 켜진 뒤 한 번 돈다(Persistent). 서버 한 대라 무작위 지연은 두지 않는다.
+[Unit]
+Description=team-wiki 동기화 (매일 09:00, 21:00 KST)
+
+[Timer]
+OnCalendar=*-*-* 09,21:00:00 Asia/Seoul
+Persistent=yes
+RandomizedDelaySec=0
+AccuracySec=1min
+Unit=team-wiki-sync.service
+
+[Install]
+WantedBy=timers.target

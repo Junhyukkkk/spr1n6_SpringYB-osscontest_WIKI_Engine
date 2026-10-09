@@ -1,0 +1,53 @@
+# team-wiki 봇용 data 사본 갱신. 손으로만 부른다(첫 설치, 봇이 꺼져 있을 때):
+#   sudo systemctl start team-wiki-pull.service
+# 봇이 돌고 있으면 봇이 data.lock을 쥐고 스스로 갱신하므로 "건너뜀"으로 0을 돌려준다.
+# 종료 코드 1(git 실패)은 프로그램이 스스로 알리지 않으므로 실패로 두고 실패 알림이 받는다.
+[Unit]
+Description=team-wiki 봇용 data 사본 갱신 (수동)
+Wants=network-online.target
+After=network-online.target
+OnFailure=team-wiki-notify@%n.service
+
+[Service]
+Type=oneshot
+User=teamwiki
+Group=teamwiki
+WorkingDirectory=/srv/team-wiki
+Environment=HOME=/srv/team-wiki/home
+Environment=TEAM_WIKI_HOME=/srv/team-wiki
+Environment=TEAM_WIKI_CONFIG=/etc/team-wiki/team.json
+Environment=TEAM_WIKI_ENGINE_DIR=/opt/team-wiki-engine
+Environment=LANG=C.UTF-8
+Environment=PYTHONUTF8=1
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+EnvironmentFile=/etc/team-wiki/secrets.env
+ExecStartPre=/opt/team-wiki-engine/.venv/bin/team-wiki-preflight --role pull --quiet
+ExecStart=/opt/team-wiki-engine/.venv/bin/team-wiki-pull
+TimeoutStartSec=20min
+TimeoutStopSec=5min
+KillMode=control-group
+KillSignal=SIGTERM
+MemoryMax=512M
+TasksMax=64
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/srv/team-wiki
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
