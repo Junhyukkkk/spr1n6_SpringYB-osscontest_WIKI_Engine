@@ -14,6 +14,7 @@ PYTHON="${PYTHON:-python3.12}"
 SYSTEMCTL="${SYSTEMCTL:-systemctl}" # 상태 조회 전용. DRY_RUN에서도 실제로 부른다
 GIT="${GIT:-git}"                   # 조회(rev-parse) 전용. 바꾸는 git 명령은 run으로 부른다
 UNITS="team-wiki-bot.service team-wiki-sync.service team-wiki-sync.timer team-wiki-pull.service team-wiki-notify@.service team-wiki-smoke.service"
+# shellcheck disable=SC2034 # update.sh가 쓴다
 TIMERS="team-wiki-sync.timer"
 
 say() { printf '%s\n' "$*"; }
