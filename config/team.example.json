@@ -1,0 +1,25 @@
+{
+  "repos": [
+    { "name": "server", "url": "https://github.com/your-org/server.git", "branch": "main", "status": "active" },
+    { "name": "relay", "url": "https://github.com/your-org/relay.git", "branch": "main", "status": "active" },
+    { "name": "worker", "url": "https://github.com/your-org/worker.git", "branch": "main", "status": "active" },
+    { "name": "web", "url": "https://github.com/your-org/web.git", "branch": "main", "status": "active" }
+  ],
+  "dataRepo": { "url": "/absolute/path/to/team-wiki-data.git", "branch": "main" },
+  "delivery": "local",
+  "discord": { "guildId": "", "channelIds": [], "opsChannelId": "", "adminUserId": "" },
+  "schedule": ["09:00", "21:00"],
+  "timezone": "Asia/Seoul",
+  "reviewMode": "pr",
+  "model": "claude-sonnet-5-5",
+  "effort": { "bot": "low", "sync": "medium" },
+  "limits": {
+    "perUserPerMinute": 2,
+    "dailyTotal": 60,
+    "concurrent": 2,
+    "botTimeoutMs": 300000,
+    "syncTimeoutMs": 1200000,
+    "diffBytesPerRepo": 200000,
+    "prBodyChars": 4000
+  }
+}
