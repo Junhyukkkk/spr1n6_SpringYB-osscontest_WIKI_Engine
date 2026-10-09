@@ -62,8 +62,8 @@
 | D9 | 약속 단위 | 경계(누가→누구에게→무엇으로) + 대체 표시 | 저장소 쌍 고정 4개 | 구조가 바뀌어도(relay 제거 가능성) 버티게 한다 |
 | D10 | 권한 분리 | AI는 파일만 고치고 git·GitHub 작업은 스크립트가 한다 | AI에게 Bash 허용 | AI가 명령을 실행할 표면을 없앤다 |
 | D11 | 모델 | Claude Sonnet 5.5(`claude-sonnet-5-5`), 봇 effort `low` · 동기화 `medium` | Opus 5.5 | 비용 절반. 첫 주 측정으로 effort를 조정한다 |
-| D12 | 구현 언어 | TypeScript(Node 22) | Kotlin | discord.js와 Claude Agent SDK가 TypeScript를 1급으로 지원한다. Kotlin용 Agent SDK는 없다 |
-| D13 | Claude 호출 방식 | Claude Agent SDK(TypeScript) | `claude` CLI 자식 프로세스 | 도구 허용을 권한 콜백으로 강제하고(허용 목록), 결과·비용을 타입으로 받는다. ARM 리눅스 동작을 P1에서 먼저 확인하고, 안 되면 CLI 방식으로 돌아간다 |
+| D12 | 구현 언어 | Python 3.12+ | TypeScript(Node 22), Kotlin | Claude Agent SDK가 Python을 정식으로 지원하고 `discord.py`도 있다. 설정 검증·테스트·타입 검사를 pydantic·pytest·mypy로 구성할 수 있고 팀에 익숙한 언어이며, 서버(Ubuntu 24.04)에 Python 3.12가 기본으로 깔려 있어 설치가 단순하다. 한 번 TypeScript로 구현해 리뷰를 마쳤고(`ts-reference` 태그) 그 결과를 Python으로 포팅한다 |
+| D13 | Claude 호출 방식 | Claude Agent SDK(Python, `claude-agent-sdk`) | `claude` CLI 자식 프로세스 | 도구 허용을 권한 콜백과 `PreToolUse` 훅으로 강제하고, 결과·비용을 타입으로 받는다. SDK 설치 파일(linux aarch64 포함)에 Claude Code CLI가 들어 있어 별도 설치가 없다. `env`는 `os.environ`에 합쳐지므로 토큰은 빈 문자열로 덮어써서 지운다 |
 
 ## 5. 전체 구조
 
@@ -168,7 +168,9 @@ skills/
   sync-code/     코드 반영 규칙
   ingest/        문서 반영 규칙
 deploy/
-  setup.sh  update.sh  systemd/  secrets.env.example
+  setup.sh  update.sh  lib.sh  init-data-repo.sh  systemd/  tmpfiles/  journald/  config/  data-repo-template/  secrets.env.example
+scripts/       오프라인 스모크
+.github/workflows/   CI
 config/
   team.example.json
 docs/
@@ -309,6 +311,7 @@ docs/
 | L2 | 깨진 링크 | 위키 내부 링크 대상 파일이 없음 |
 | L3 | 근거 누락 | 필수 frontmatter 누락, `contracts/`의 `evidence`가 비었음, `sources/`의 `raw` 파일이 없음 |
 | L4 | 상태 정합 | `대체됨`인데 `superseded_by`가 없거나 대상이 없음, `archived` 저장소의 현황 페이지가 `archived: false` |
+| L5 | 위키 형태 | `wiki/` 아래에 숨김 파일, `.md`가 아닌 파일, 심볼릭 링크가 있음 |
 
 의미상 모순과 낡은 서술은 이 점검이 잡지 못한다. §8.1의 4.4 재확인 단계와 사람 검토가 맡는다.
 
@@ -337,7 +340,7 @@ docs/
 | V3 | 같은 종류의 열린 PR이 있으면 그 종류를 건너뛰고 운영 채널에 남긴다 |
 | V4 | 봇 질문 → 스레드 답변, 근거·기준 시점 포함, 후속 질문에서 맥락 유지 |
 | V5 | 위키에 없는 질문 → 코드에서 찾은 답에 "위키에 없던 내용" 표시 → 다음 코드 반영 PR에 보강 제안 |
-| V6 | 점검 L1~L4를 각각 위반 사례로 실패시킬 수 있다 |
+| V6 | 점검 L1~L5를 각각 위반 사례로 실패시킬 수 있다 |
 
 ### 12.2 보안
 
@@ -375,13 +378,13 @@ relay 제거가 결정되면 다음을 확인한다.
 | 서버 | OCI `VM.Standard.A1.Flex` 2 OCPU / 12GB, Ubuntu 24.04 aarch64, 부트 볼륨 50GB |
 | 계정 | Pay As You Go로 전환(유휴 인스턴스 회수 대상에서 빠짐), 예산 알림 설정 |
 | 네트워크 | 인바운드는 22/tcp만, SSH 키 인증만. 아웃바운드는 디스코드, GitHub, Anthropic API |
-| 사용자 | `teamwiki`(sudo 없음) |
-| 폴더 | `/srv/team-wiki/{engine,data,data-sync,repos/<이름>,state}` |
-| 비밀값 | `/etc/team-wiki/secrets.env`(600, 소유자 `teamwiki`): `DISCORD_TOKEN`, `ANTHROPIC_API_KEY`, `GITHUB_TOKEN` |
+| 사용자 | `teamwiki`(sudo 없음, 로그인 셸 없음) |
+| 폴더 | 엔진 `/opt/team-wiki-engine`(root 소유) · 작업 폴더 `/srv/team-wiki/{home,data,data-sync,repos/<이름>,state}`(teamwiki) |
+| 비밀값 | `/etc/team-wiki/secrets.env`(600, 소유자 root — systemd가 읽어 환경변수로만 넘긴다): `DISCORD_TOKEN`, `ANTHROPIC_API_KEY`, `GITHUB_TOKEN` |
 | 설정 | `/etc/team-wiki/team.json` |
-| 서비스 | `team-wiki-bot.service`(항상 실행, 죽으면 재시작), `team-wiki-sync.timer`(09:00·21:00 KST), `team-wiki-pull.timer`(10분마다 `data` pull), 실패 시 운영 채널 알림 |
-| 설치 | `deploy/setup.sh`: 여러 번 돌려도 같은 결과. Node 22, git, 사용자, 폴더, 사본, 서비스 등록 |
-| 업데이트 | `deploy/update.sh`: 엔진 pull → 의존성 설치 → 빌드 → 재시작 |
+| 서비스 | `team-wiki-bot.service`(항상 실행, 죽거나 멈추면 재시작, `data` 사본을 스스로 10분마다 갱신), `team-wiki-sync.timer`(09:00·21:00 KST), 실패 시 운영 채널 알림, 손으로만 부르는 `team-wiki-pull.service`(첫 설치·봇이 꺼졌을 때)와 실제 SDK 스모크 유닛 |
+| 설치 | `deploy/setup.sh`: 여러 번 돌려도 같은 결과. apt(git, python3.12, venv, tzdata), 사용자, 엔진 체크아웃 + pip install -e, 폴더(tmpfiles), 로그 한도, 유닛 등록(enable만) |
+| 업데이트 | `deploy/update.sh`: 실행 중이면 거부 → 상태 백업 → 엔진 빨리 감기 → pip install -e(빌드 없음) → 유닛 재설치 → 봇 재시작, --rollback으로 직전 커밋 |
 | GitHub 토큰 | fine-grained PAT. 대상은 데이터 저장소 하나, 권한은 Contents 읽기·쓰기, Pull requests 읽기·쓰기, Metadata 읽기. public 코드 저장소 읽기와 API 호출에도 같은 토큰을 쓴다 |
 | Anthropic | 이 봇 전용 워크스페이스와 API 키, 월 지출 한도 |
 
@@ -394,7 +397,7 @@ relay 제거가 결정되면 다음을 확인한다.
 | P1 | 엔진 골격, Claude 호출 공통(권한 콜백·경로 제한), 위키 스키마 스킬, 점검 4종, 데이터 저장소 생성. Agent SDK ARM 동작 확인 | V6, X1~X4를 로컬에서 통과 |
 | P2 | 동기화 작업(코드 반영 → 문서 반영). 로컬에서 실제 저장소 4개로 첫 위키 생성 | V1~V3 |
 | P3 | 디스코드 봇 | V4, V5, X5, X6 |
-| P4 | 오라클 배포 | §12.4 시작 |
+| P4 | 오라클 배포 | 배포 전 관문(실제 SDK 스모크 — 맥과 서버 샌드박스) 통과 후 §12.4 시작 |
 | P5 | 2주 운영·측정 후 `reviewMode` 전환 판단 | M1 수치로 결정 기록 |
 
 ## 15. 위험과 남은 문제
@@ -404,7 +407,7 @@ relay 제거가 결정되면 다음을 확인한다.
 | 메신저에서만 정한 결정은 위키가 모른다 | 봇이 "넣어 준 문서에 없다"고 답한다(§9.2-5). 팀 규칙은 보류 상태로 남긴다 |
 | 비용 추정이 불확실하다(질문당 약 5만 토큰 가정) | 첫 주에 실측하고, 하루 상한과 월 지출 한도로 막는다 |
 | A1 인스턴스 생성 실패(용량 부족) | 시간을 두고 재시도하거나 다른 가용 도메인을 쓴다 |
-| Agent SDK가 ARM 리눅스에서 안 돌 수 있다 | P1 첫 작업으로 확인하고, 안 되면 CLI 자식 프로세스 방식(D13 대안)으로 간다 |
+| Agent SDK가 ARM 리눅스에서 안 돌 수 있다 | Python SDK는 `manylinux_2_17_aarch64` 설치 파일에 CLI가 동봉됨을 PyPI에서 확인했다(2026-10-07). 서버에서의 실제 동작은 배포 전 관문의 샌드박스 스모크(`team-wiki-smoke.service`)로 확인한다 |
 | relay 제거 시점·방식이 정해지지 않았다 | §12.3을 실제 결정 때 수행한다 |
 | 팀원이 디스코드에 들어와야 한다 | 도입 전에 팀에 공지한다 |
 | 주 담당자를 커밋 기록으로 추정하면 실제와 다를 수 있다 | 현황 페이지에 추정이라고 표시하고, 결정 문서가 담당을 정하면 그쪽을 따른다 |
