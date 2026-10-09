@@ -1,0 +1,30 @@
+# 엔진 CI: 오프라인 스모크(테스트·타입·스타일·스크립트·콘솔 스크립트). 비밀값·실제 Claude를 쓰지 않는다.
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  offline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 설치
+        run: python -m pip install --disable-pip-version-check -e '.[dev]'
+      - name: 셸 스크립트 점검
+        run: shellcheck -x deploy/*.sh scripts/*.sh deploy/data-repo-template/.github/scripts/*.sh
+      - name: 오프라인 스모크
+        env:
+          PYTHON: python
+        run: bash scripts/smoke-offline.sh
